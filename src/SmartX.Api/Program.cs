@@ -1,41 +1,64 @@
+using SmartX.Shared.Models;
+using System.Text.Json.Serialization;
+
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
+builder.Services.ConfigureHttpJsonOptions(options =>
+    options.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
 }
 
-app.UseHttpsRedirection();
-
-var summaries = new[]
+// Keep local testing simple; deployed versions should always redirect to HTTPS.
+if (!app.Environment.IsDevelopment())
 {
-    "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-};
+    app.UseHttpsRedirection();
+}
 
-app.MapGet("/weatherforecast", () =>
+// This list is temporary storage for Part 1. It is cleared when the API stops.
+var registeredSensors = new List<SensorProfile>();
+
+var sensors = app.MapGroup("/api/sensors")
+    .WithTags("Sensors");
+
+// GET /api/sensors returns every sensor registered during the current run.
+sensors.MapGet("/", () => Results.Ok(registeredSensors))
+    .WithName("GetSensors");
+
+// POST /api/sensors adds one sensor registration record.
+sensors.MapPost("/", (SensorProfile profile) =>
 {
-    var forecast =  Enumerable.Range(1, 5).Select(index =>
-        new WeatherForecast
-        (
-            DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-            Random.Shared.Next(-20, 55),
-            summaries[Random.Shared.Next(summaries.Length)]
-        ))
-        .ToArray();
-    return forecast;
+    if (string.IsNullOrWhiteSpace(profile.DeviceId) ||
+        string.IsNullOrWhiteSpace(profile.MacAddress) ||
+        string.IsNullOrWhiteSpace(profile.DeploymentLocation))
+    {
+        return Results.BadRequest(new
+        {
+            message = "Device ID, MAC address and deployment location are required."
+        });
+    }
+
+    var sensorAlreadyExists = registeredSensors.Any(sensor =>
+        sensor.DeviceId.Equals(profile.DeviceId, StringComparison.OrdinalIgnoreCase) ||
+        sensor.MacAddress.Equals(profile.MacAddress, StringComparison.OrdinalIgnoreCase));
+
+    if (sensorAlreadyExists)
+    {
+        return Results.Conflict(new
+        {
+            message = "A sensor with this device ID or MAC address is already registered."
+        });
+    }
+
+    registeredSensors.Add(profile);
+
+    return Results.Created($"/api/sensors/{profile.DeviceId}", profile);
 })
-.WithName("GetWeatherForecast");
+.WithName("RegisterSensor");
 
 app.Run();
-
-record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
-{
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
-}
