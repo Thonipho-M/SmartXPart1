@@ -110,29 +110,54 @@
 
             @if (selectedHistory is not null)
             {
+                <div class="mb-4">
+                    <label class="form-label" for="metricFilter">Filter by metric</label>
+                    <InputSelect id="metricFilter" class="form-select" @bind-Value="selectedMetric">
+                        <option value="">All metrics</option>
+                        @foreach (var metric in AvailableMetrics)
+                        {
+                            <option value="@metric">@metric</option>
+                        }
+                    </InputSelect>
+                    <div class="form-text">Choose a metric to reduce the readings shown below. Select any reading for more detail.</div>
+                </div>
+
                 <div class="row row-cols-1 row-cols-lg-3 g-3">
                     <div class="col">
                         <h3 class="h6 text-uppercase text-secondary">Decimal readings</h3>
-                        @foreach (var packet in selectedHistory.FloatPackets)
+                        @foreach (var packet in FilterPackets(selectedHistory.FloatPackets))
                         {
-                            <p class="mb-2"><strong>@packet.Value</strong> @packet.MetricName</p>
+                            <button class="list-group-item list-group-item-action mb-2 border rounded text-start" type="button" @onclick="() => ShowPacketDetails(packet)">
+                                <strong>@packet.Value</strong> @packet.MetricName
+                            </button>
                         }
                     </div>
                     <div class="col">
                         <h3 class="h6 text-uppercase text-secondary">Whole-number readings</h3>
-                        @foreach (var packet in selectedHistory.IntegerPackets)
+                        @foreach (var packet in FilterPackets(selectedHistory.IntegerPackets))
                         {
-                            <p class="mb-2"><strong>@packet.Value</strong> @packet.MetricName</p>
+                            <button class="list-group-item list-group-item-action mb-2 border rounded text-start" type="button" @onclick="() => ShowPacketDetails(packet)">
+                                <strong>@packet.Value</strong> @packet.MetricName
+                            </button>
                         }
                     </div>
                     <div class="col">
                         <h3 class="h6 text-uppercase text-secondary">Switch-state readings</h3>
-                        @foreach (var packet in selectedHistory.BooleanPackets)
+                        @foreach (var packet in FilterPackets(selectedHistory.BooleanPackets))
                         {
-                            <p class="mb-2"><strong>@packet.Value</strong> @packet.MetricName</p>
+                            <button class="list-group-item list-group-item-action mb-2 border rounded text-start" type="button" @onclick="() => ShowPacketDetails(packet)">
+                                <strong>@packet.Value</strong> @packet.MetricName
+                            </button>
                         }
                     </div>
                 </div>
+
+                @if (selectedPacketDetails is not null)
+                {
+                    <div class="alert alert-info mt-4 mb-0" role="status">
+                        <strong>Selected reading:</strong> @selectedPacketDetails
+                    </div>
+                }
             }
         </div>
     </section>
@@ -145,6 +170,8 @@
     private List<SensorProfile> registeredSensors = [];
     private TelemetryHistory? selectedHistory;
     private string selectedDeviceId = string.Empty;
+    private string selectedMetric = string.Empty;
+    private string? selectedPacketDetails;
     private string? message;
     private string messageStyle = "alert-info";
 
@@ -209,11 +236,33 @@
         try
         {
             selectedHistory = await SensorApi.GetTelemetryHistoryAsync(selectedDeviceId);
+            selectedMetric = string.Empty;
+            selectedPacketDetails = null;
         }
         catch (HttpRequestException)
         {
             message = "The API is not running. Start SmartX.Api, then try again.";
             messageStyle = "alert-warning";
         }
+    }
+
+    private IEnumerable<string> AvailableMetrics => selectedHistory is null
+        ? []
+        : selectedHistory.FloatPackets.Select(packet => packet.MetricName)
+            .Concat(selectedHistory.IntegerPackets.Select(packet => packet.MetricName))
+            .Concat(selectedHistory.BooleanPackets.Select(packet => packet.MetricName))
+            .Distinct()
+            .OrderBy(metric => metric);
+
+    private IEnumerable<TelemetryPacket<T>> FilterPackets<T>(IEnumerable<TelemetryPacket<T>> packets)
+    {
+        return string.IsNullOrWhiteSpace(selectedMetric)
+            ? packets
+            : packets.Where(packet => packet.MetricName == selectedMetric);
+    }
+
+    private void ShowPacketDetails<T>(TelemetryPacket<T> packet)
+    {
+        selectedPacketDetails = $"{packet.MetricName}: {packet.Value} from {packet.DeviceId} at {packet.RecordedAtUtc.ToLocalTime():g}.";
     }
 }
