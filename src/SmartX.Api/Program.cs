@@ -1,3 +1,4 @@
+using SmartX.Api.Data;
 using SmartX.Shared.Models;
 using System.Text.Json.Serialization;
 
@@ -73,6 +74,12 @@ var floatTelemetry = new List<TelemetryPacket<float>>();
 var integerTelemetry = new List<TelemetryPacket<int>>();
 var booleanTelemetry = new List<TelemetryPacket<bool>>();
 
+MockTelemetrySeeder.Seed(
+    registeredSensors,
+    floatTelemetry,
+    integerTelemetry,
+    booleanTelemetry);
+
 var telemetry = app.MapGroup("/api/telemetry")
     .WithTags("Telemetry");
 
@@ -90,11 +97,11 @@ telemetry.MapPost("/boolean", (TelemetryPacket<bool> packet) =>
     .WithName("AddBooleanTelemetry");
 
 // GET /api/telemetry returns all packets, grouped by their value type.
-telemetry.MapGet("/", () => Results.Ok(new
+telemetry.MapGet("/", () => Results.Ok(new TelemetryHistory
 {
-    floatPackets = floatTelemetry,
-    integerPackets = integerTelemetry,
-    booleanPackets = booleanTelemetry
+    FloatPackets = floatTelemetry,
+    IntegerPackets = integerTelemetry,
+    BooleanPackets = booleanTelemetry
 }))
 .WithName("GetAllTelemetry");
 
@@ -109,14 +116,14 @@ telemetry.MapGet("/{deviceId}", (string deviceId) =>
         return Results.NotFound(new { message = "The requested sensor is not registered." });
     }
 
-    return Results.Ok(new
+    return Results.Ok(new TelemetryHistory
     {
-        floatPackets = floatTelemetry.Where(packet =>
-            packet.DeviceId.Equals(deviceId, StringComparison.OrdinalIgnoreCase)),
-        integerPackets = integerTelemetry.Where(packet =>
-            packet.DeviceId.Equals(deviceId, StringComparison.OrdinalIgnoreCase)),
-        booleanPackets = booleanTelemetry.Where(packet =>
-            packet.DeviceId.Equals(deviceId, StringComparison.OrdinalIgnoreCase))
+        FloatPackets = floatTelemetry.Where(packet =>
+            packet.DeviceId.Equals(deviceId, StringComparison.OrdinalIgnoreCase)).ToList(),
+        IntegerPackets = integerTelemetry.Where(packet =>
+            packet.DeviceId.Equals(deviceId, StringComparison.OrdinalIgnoreCase)).ToList(),
+        BooleanPackets = booleanTelemetry.Where(packet =>
+            packet.DeviceId.Equals(deviceId, StringComparison.OrdinalIgnoreCase)).ToList()
     });
 })
 .WithName("GetSensorTelemetry");

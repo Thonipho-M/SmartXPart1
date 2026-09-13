@@ -89,12 +89,62 @@
         </div>
     </div>
 
+    <section class="card shadow-sm mt-4">
+        <div class="card-body">
+            <div class="row align-items-end g-3 mb-3">
+                <div class="col-md-7">
+                    <label class="form-label" for="historySensor">Sensor telemetry history</label>
+                    <InputSelect id="historySensor" class="form-select" @bind-Value="selectedDeviceId">
+                        @foreach (var sensor in registeredSensors)
+                        {
+                            <option value="@sensor.DeviceId">@sensor.DeviceId - @sensor.DeploymentLocation</option>
+                        }
+                    </InputSelect>
+                </div>
+                <div class="col-md-5">
+                    <button class="btn btn-outline-primary" @onclick="LoadSelectedTelemetryAsync" disabled="@(!registeredSensors.Any())">
+                        View history
+                    </button>
+                </div>
+            </div>
+
+            @if (selectedHistory is not null)
+            {
+                <div class="row row-cols-1 row-cols-lg-3 g-3">
+                    <div class="col">
+                        <h3 class="h6 text-uppercase text-secondary">Decimal readings</h3>
+                        @foreach (var packet in selectedHistory.FloatPackets)
+                        {
+                            <p class="mb-2"><strong>@packet.Value</strong> @packet.MetricName</p>
+                        }
+                    </div>
+                    <div class="col">
+                        <h3 class="h6 text-uppercase text-secondary">Whole-number readings</h3>
+                        @foreach (var packet in selectedHistory.IntegerPackets)
+                        {
+                            <p class="mb-2"><strong>@packet.Value</strong> @packet.MetricName</p>
+                        }
+                    </div>
+                    <div class="col">
+                        <h3 class="h6 text-uppercase text-secondary">Switch-state readings</h3>
+                        @foreach (var packet in selectedHistory.BooleanPackets)
+                        {
+                            <p class="mb-2"><strong>@packet.Value</strong> @packet.MetricName</p>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    </section>
+
     <NavLink class="btn btn-link px-0 mt-4" href="">Back to gateway</NavLink>
 </div>
 
 @code {
     private SensorProfile newSensor = new();
     private List<SensorProfile> registeredSensors = [];
+    private TelemetryHistory? selectedHistory;
+    private string selectedDeviceId = string.Empty;
     private string? message;
     private string messageStyle = "alert-info";
 
@@ -108,6 +158,12 @@
         try
         {
             registeredSensors = await SensorApi.GetSensorsAsync();
+
+            if (registeredSensors.Count > 0 && string.IsNullOrEmpty(selectedDeviceId))
+            {
+                selectedDeviceId = registeredSensors[0].DeviceId;
+                await LoadSelectedTelemetryAsync();
+            }
         }
         catch (HttpRequestException)
         {
@@ -135,6 +191,24 @@
             messageStyle = "alert-success";
             newSensor = new SensorProfile();
             await LoadSensorsAsync();
+        }
+        catch (HttpRequestException)
+        {
+            message = "The API is not running. Start SmartX.Api, then try again.";
+            messageStyle = "alert-warning";
+        }
+    }
+
+    private async Task LoadSelectedTelemetryAsync()
+    {
+        if (string.IsNullOrWhiteSpace(selectedDeviceId))
+        {
+            return;
+        }
+
+        try
+        {
+            selectedHistory = await SensorApi.GetTelemetryHistoryAsync(selectedDeviceId);
         }
         catch (HttpRequestException)
         {

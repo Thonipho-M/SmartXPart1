@@ -15,4 +15,10 @@ public class SensorApiClient(HttpClient httpClient)
     {
         return httpClient.PostAsJsonAsync("api/sensors/", sensor);
     }
+
+    public async Task<TelemetryHistory> GetTelemetryHistoryAsync(string deviceId)
+    {
+        return await httpClient.GetFromJsonAsync<TelemetryHistory>(
+            $"api/telemetry/{Uri.EscapeDataString(deviceId)}") ?? new TelemetryHistory();
+    }
 }
