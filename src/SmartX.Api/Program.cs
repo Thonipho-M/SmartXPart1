@@ -1,4 +1,5 @@
 using SmartX.Api.Data;
+using SmartX.Api.Services;
 using SmartX.Shared.Models;
 using System.Text.Json.Serialization;
 
@@ -82,6 +83,15 @@ MockTelemetrySeeder.Seed(
 
 var telemetry = app.MapGroup("/api/telemetry")
     .WithTags("Telemetry");
+
+app.MapGet("/api/alerts", () => Results.Ok(TelemetryAlertEvaluator.Evaluate(
+    registeredSensors,
+    floatTelemetry,
+    integerTelemetry,
+    booleanTelemetry,
+    DateTime.UtcNow)))
+    .WithTags("Alerts")
+    .WithName("GetTelemetryAlerts");
 
 // The three POST routes deliberately accept different generic packet types.
 telemetry.MapPost("/float", (TelemetryPacket<float> packet) =>

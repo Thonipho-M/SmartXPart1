@@ -29,4 +29,9 @@ public class SensorApiClient(HttpClient httpClient)
         return await httpClient.GetFromJsonAsync<TelemetryHistory>(
             $"api/telemetry/{Uri.EscapeDataString(deviceId)}", JsonOptions) ?? new TelemetryHistory();
     }
+
+    public async Task<List<TelemetryAlert>> GetAlertsAsync()
+    {
+        return await httpClient.GetFromJsonAsync<List<TelemetryAlert>>("api/alerts", JsonOptions) ?? [];
+    }
 }

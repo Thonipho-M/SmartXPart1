@@ -10,6 +10,34 @@
         Register a sensor before sending its telemetry to Smart-X.
     </p>
 
+    <section class="card shadow-sm mb-4">
+        <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h2 class="h4 mb-0">Proactive alerts</h2>
+                <button class="btn btn-sm btn-outline-secondary" @onclick="LoadAlertsAsync">Refresh alerts</button>
+            </div>
+
+            @if (alerts.Count == 0)
+            {
+                <p class="text-secondary mb-0">No active alerts. All monitored readings are within the configured rules.</p>
+            }
+            else
+            {
+                @foreach (var alert in alerts)
+                {
+                    <div class="alert @GetAlertStyle(alert.Severity) d-flex justify-content-between align-items-start" role="alert">
+                        <div>
+                            <strong>@alert.DeviceId - @alert.MetricName</strong>
+                            <div>@alert.Message</div>
+                            <small>Suggested action: @alert.SuggestedAction</small>
+                        </div>
+                        <button class="btn btn-sm btn-outline-dark ms-3" @onclick="() => InvestigateAlertAsync(alert)">Investigate</button>
+                    </div>
+                }
+            }
+        </div>
+    </section>
+
     @if (message is not null)
     {
         <div class="alert @messageStyle" role="alert">@message</div>
@@ -168,6 +196,7 @@
 @code {
     private SensorProfile newSensor = new();
     private List<SensorProfile> registeredSensors = [];
+    private List<TelemetryAlert> alerts = [];
     private TelemetryHistory? selectedHistory;
     private string selectedDeviceId = string.Empty;
     private string selectedMetric = string.Empty;
@@ -178,6 +207,7 @@
     protected override async Task OnInitializedAsync()
     {
         await LoadSensorsAsync();
+        await LoadAlertsAsync();
     }
 
     private async Task LoadSensorsAsync()
@@ -218,6 +248,7 @@
             messageStyle = "alert-success";
             newSensor = new SensorProfile();
             await LoadSensorsAsync();
+            await LoadAlertsAsync();
         }
         catch (HttpRequestException)
         {
@@ -244,6 +275,30 @@
             message = "The API is not running. Start SmartX.Api, then try again.";
             messageStyle = "alert-warning";
         }
+    }
+
+    private async Task LoadAlertsAsync()
+    {
+        try
+        {
+            alerts = await SensorApi.GetAlertsAsync();
+        }
+        catch (HttpRequestException)
+        {
+            message = "The API is not running. Start SmartX.Api, then try again.";
+            messageStyle = "alert-warning";
+        }
+    }
+
+    private async Task InvestigateAlertAsync(TelemetryAlert alert)
+    {
+        selectedDeviceId = alert.DeviceId;
+        await LoadSelectedTelemetryAsync();
+    }
+
+    private static string GetAlertStyle(AlertSeverity severity)
+    {
+        return severity == AlertSeverity.Critical ? "alert-danger" : "alert-warning";
     }
 
     private IEnumerable<string> AvailableMetrics => selectedHistory is null

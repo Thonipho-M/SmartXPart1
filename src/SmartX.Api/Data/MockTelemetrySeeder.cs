@@ -32,6 +32,13 @@ public static class MockTelemetrySeeder
                 MacAddress = "AA:BB:CC:00:00:03",
                 DeploymentLocation = "Hydroponic Farm A - Irrigation Line 1",
                 Category = SensorCategory.Actuator
+            },
+            new SensorProfile
+            {
+                DeviceId = "FARM-TEMP-02",
+                MacAddress = "AA:BB:CC:00:00:04",
+                DeploymentLocation = "Hydroponic Farm A - Zone 2",
+                Category = SensorCategory.Environmental
             }
         ]);
 
@@ -43,6 +50,12 @@ public static class MockTelemetrySeeder
         };
         AddPackets(floatTelemetry, "FARM-MOIST-01", "Soil Moisture", moistureBatches[0]);
         AddPackets(floatTelemetry, "FARM-MOIST-01", "Nutrient Temperature", moistureBatches[1]);
+        AddPackets(
+            floatTelemetry,
+            "FARM-TEMP-02",
+            "Ambient Temperature",
+            new[] { 23.4f, 23.1f, 22.9f },
+            DateTime.UtcNow.AddMinutes(-30));
 
         var powerBatches = new[]
         {
@@ -65,9 +78,10 @@ public static class MockTelemetrySeeder
         List<TelemetryPacket<T>> destination,
         string deviceId,
         string metricName,
-        T[] values)
+        T[] values,
+        DateTime? firstReadingTime = null)
     {
-        var firstReadingTime = DateTime.UtcNow.AddMinutes(-5 * values.Length);
+        var packetStartTime = firstReadingTime ?? DateTime.UtcNow.AddMinutes(-5 * values.Length);
 
         for (var index = 0; index < values.Length; index++)
         {
@@ -76,7 +90,7 @@ public static class MockTelemetrySeeder
                 DeviceId = deviceId,
                 MetricName = metricName,
                 Value = values[index],
-                RecordedAtUtc = firstReadingTime.AddMinutes(index * 5)
+                RecordedAtUtc = packetStartTime.AddMinutes(index * 5)
             });
         }
     }
