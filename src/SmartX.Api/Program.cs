@@ -68,4 +68,76 @@ sensors.MapPost("/", (SensorProfile profile) =>
 })
 .WithName("RegisterSensor");
 
+// Each list preserves its packet's original telemetry value type.
+var floatTelemetry = new List<TelemetryPacket<float>>();
+var integerTelemetry = new List<TelemetryPacket<int>>();
+var booleanTelemetry = new List<TelemetryPacket<bool>>();
+
+var telemetry = app.MapGroup("/api/telemetry")
+    .WithTags("Telemetry");
+
+// The three POST routes deliberately accept different generic packet types.
+telemetry.MapPost("/float", (TelemetryPacket<float> packet) =>
+    StoreTelemetryPacket(packet, floatTelemetry))
+    .WithName("AddFloatTelemetry");
+
+telemetry.MapPost("/integer", (TelemetryPacket<int> packet) =>
+    StoreTelemetryPacket(packet, integerTelemetry))
+    .WithName("AddIntegerTelemetry");
+
+telemetry.MapPost("/boolean", (TelemetryPacket<bool> packet) =>
+    StoreTelemetryPacket(packet, booleanTelemetry))
+    .WithName("AddBooleanTelemetry");
+
+// GET /api/telemetry returns all packets, grouped by their value type.
+telemetry.MapGet("/", () => Results.Ok(new
+{
+    floatPackets = floatTelemetry,
+    integerPackets = integerTelemetry,
+    booleanPackets = booleanTelemetry
+}))
+.WithName("GetAllTelemetry");
+
+// GET /api/telemetry/{deviceId} returns the history for one sensor.
+telemetry.MapGet("/{deviceId}", (string deviceId) =>
+{
+    var sensorExists = registeredSensors.Any(sensor =>
+        sensor.DeviceId.Equals(deviceId, StringComparison.OrdinalIgnoreCase));
+
+    if (!sensorExists)
+    {
+        return Results.NotFound(new { message = "The requested sensor is not registered." });
+    }
+
+    return Results.Ok(new
+    {
+        floatPackets = floatTelemetry.Where(packet =>
+            packet.DeviceId.Equals(deviceId, StringComparison.OrdinalIgnoreCase)),
+        integerPackets = integerTelemetry.Where(packet =>
+            packet.DeviceId.Equals(deviceId, StringComparison.OrdinalIgnoreCase)),
+        booleanPackets = booleanTelemetry.Where(packet =>
+            packet.DeviceId.Equals(deviceId, StringComparison.OrdinalIgnoreCase))
+    });
+})
+.WithName("GetSensorTelemetry");
+
+IResult StoreTelemetryPacket<T>(TelemetryPacket<T> packet, List<TelemetryPacket<T>> packetList)
+{
+    if (string.IsNullOrWhiteSpace(packet.DeviceId) || string.IsNullOrWhiteSpace(packet.MetricName))
+    {
+        return Results.BadRequest(new { message = "Device ID and metric name are required." });
+    }
+
+    var sensorExists = registeredSensors.Any(sensor =>
+        sensor.DeviceId.Equals(packet.DeviceId, StringComparison.OrdinalIgnoreCase));
+
+    if (!sensorExists)
+    {
+        return Results.NotFound(new { message = "Register the sensor before sending telemetry." });
+    }
+
+    packetList.Add(packet);
+    return Results.Created($"/api/telemetry/{packet.DeviceId}", packet);
+}
+
 app.Run();
