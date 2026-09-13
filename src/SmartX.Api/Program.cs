@@ -6,6 +6,11 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddOpenApi();
 builder.Services.ConfigureHttpJsonOptions(options =>
     options.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
+builder.Services.AddCors(options =>
+    options.AddPolicy("BlazorClient", policy =>
+        policy.WithOrigins("http://localhost:5025", "https://localhost:7169")
+            .AllowAnyHeader()
+            .AllowAnyMethod()));
 
 var app = builder.Build();
 
@@ -19,6 +24,8 @@ if (!app.Environment.IsDevelopment())
 {
     app.UseHttpsRedirection();
 }
+
+app.UseCors("BlazorClient");
 
 // This list is temporary storage for Part 1. It is cleared when the API stops.
 var registeredSensors = new List<SensorProfile>();
