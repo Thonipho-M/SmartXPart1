@@ -70,6 +70,91 @@ sensors.MapPost("/", (SensorProfile profile) =>
 })
 .WithName("RegisterSensor");
 
+// POST /api/sensors/{deviceId}/attachments stores a multipart attachment for one sensor.
+sensors.MapPost("/{deviceId}/attachments", async (string deviceId, HttpRequest request) =>
+{
+    var sensorExists = registeredSensors.Any(sensor =>
+        sensor.DeviceId.Equals(deviceId, StringComparison.OrdinalIgnoreCase));
+
+    if (!sensorExists)
+    {
+        return Results.NotFound(new { message = "The requested sensor is not registered." });
+    }
+
+    if (!request.HasFormContentType)
+    {
+        return Results.BadRequest(new { message = "Upload the attachment as multipart form data." });
+    }
+
+    var form = await request.ReadFormAsync();
+    var uploadedFile = form.Files.GetFile("file");
+
+    if (uploadedFile is null || uploadedFile.Length == 0)
+    {
+        return Results.BadRequest(new { message = "Choose a file to attach." });
+    }
+
+    const long maximumFileSize = 10 * 1024 * 1024;
+    if (uploadedFile.Length > maximumFileSize)
+    {
+        return Results.BadRequest(new { message = "Attachments must be 10 MB or smaller." });
+    }
+
+    var safeDeviceFolder = CreateSafeFolderName(deviceId);
+    var uploadDirectory = Path.Combine(app.Environment.ContentRootPath, "Uploads", safeDeviceFolder);
+    Directory.CreateDirectory(uploadDirectory);
+
+    var safeFileName = Path.GetFileName(uploadedFile.FileName);
+    var storedFileName = $"{Guid.NewGuid():N}_{safeFileName}";
+    var storedFilePath = Path.Combine(uploadDirectory, storedFileName);
+
+    await using (var destination = File.Create(storedFilePath))
+    {
+        await uploadedFile.CopyToAsync(destination);
+    }
+
+    var attachment = new SensorAttachment
+    {
+        FileName = safeFileName,
+        ContentType = uploadedFile.ContentType,
+        SizeBytes = uploadedFile.Length,
+        UploadedAtUtc = DateTime.UtcNow
+    };
+
+    return Results.Created($"/api/sensors/{Uri.EscapeDataString(deviceId)}/attachments", attachment);
+})
+.WithName("AttachSensorFile");
+
+// GET /api/sensors/{deviceId}/attachments lists files currently linked to a sensor.
+sensors.MapGet("/{deviceId}/attachments", (string deviceId) =>
+{
+    var sensorExists = registeredSensors.Any(sensor =>
+        sensor.DeviceId.Equals(deviceId, StringComparison.OrdinalIgnoreCase));
+
+    if (!sensorExists)
+    {
+        return Results.NotFound(new { message = "The requested sensor is not registered." });
+    }
+
+    var uploadDirectory = Path.Combine(app.Environment.ContentRootPath, "Uploads", CreateSafeFolderName(deviceId));
+    if (!Directory.Exists(uploadDirectory))
+    {
+        return Results.Ok(Array.Empty<SensorAttachment>());
+    }
+
+    var attachments = new DirectoryInfo(uploadDirectory).GetFiles()
+        .Select(file => new SensorAttachment
+        {
+            FileName = file.Name[(file.Name.IndexOf('_') + 1)..],
+            SizeBytes = file.Length,
+            UploadedAtUtc = file.LastWriteTimeUtc
+        })
+        .OrderByDescending(file => file.UploadedAtUtc);
+
+    return Results.Ok(attachments);
+})
+.WithName("GetSensorAttachments");
+
 // Each list preserves its packet's original telemetry value type.
 var floatTelemetry = new List<TelemetryPacket<float>>();
 var integerTelemetry = new List<TelemetryPacket<int>>();
@@ -155,6 +240,13 @@ IResult StoreTelemetryPacket<T>(TelemetryPacket<T> packet, List<TelemetryPacket<
 
     packetList.Add(packet);
     return Results.Created($"/api/telemetry/{packet.DeviceId}", packet);
+}
+
+string CreateSafeFolderName(string deviceId)
+{
+    var invalidCharacters = Path.GetInvalidFileNameChars();
+    return string.Concat(deviceId.Select(character =>
+        invalidCharacters.Contains(character) ? '_' : character));
 }
 
 app.Run();

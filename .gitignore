@@ -6,6 +6,7 @@
 # dotenv files
 .env
 work/
+src/SmartX.Api/Uploads/
 
 # User-specific files
 *.rsuser

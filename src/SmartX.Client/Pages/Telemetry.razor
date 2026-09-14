@@ -136,6 +136,57 @@
 
     <section class="card shadow-sm mt-4">
         <div class="card-body">
+            <h2 class="h4">Sensor attachments</h2>
+            <p class="text-secondary">Attach configuration files, deployment photos, or hardware log files to the selected sensor.</p>
+
+            <div class="row align-items-end g-3">
+                <div class="col-md-5">
+                    <label class="form-label" for="attachmentSensor">Sensor profile</label>
+                    <InputSelect id="attachmentSensor" class="form-select" @bind-Value="selectedDeviceId">
+                        @foreach (var sensor in registeredSensors)
+                        {
+                            <option value="@sensor.DeviceId">@sensor.DeviceId - @sensor.DeploymentLocation</option>
+                        }
+                    </InputSelect>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label" for="attachmentFile">Attachment (max 10 MB)</label>
+                    <InputFile id="attachmentFile" class="form-control" OnChange="SelectAttachment" accept=".txt,.log,.json,.xml,.jpg,.jpeg,.png,.pdf" />
+                </div>
+                <div class="col-md-3 d-flex gap-2">
+                    <button class="btn btn-primary" @onclick="UploadAttachmentAsync" disabled="@(selectedAttachmentFile is null || string.IsNullOrWhiteSpace(selectedDeviceId))">Upload</button>
+                    <button class="btn btn-outline-secondary" @onclick="LoadAttachmentsAsync" disabled="@string.IsNullOrWhiteSpace(selectedDeviceId)">Refresh</button>
+                </div>
+            </div>
+
+            @if (attachmentMessage is not null)
+            {
+                <div class="alert @attachmentMessageStyle mt-3 mb-0" role="status">@attachmentMessage</div>
+            }
+
+            <div class="mt-3">
+                @if (attachments.Count == 0)
+                {
+                    <p class="text-secondary mb-0">No files are attached to this sensor yet.</p>
+                }
+                else
+                {
+                    <ul class="list-group">
+                        @foreach (var attachment in attachments)
+                        {
+                            <li class="list-group-item d-flex justify-content-between align-items-center">
+                                <span>@attachment.FileName</span>
+                                <small class="text-secondary">@FormatFileSize(attachment.SizeBytes) - @FormatTimestamp(attachment.UploadedAtUtc)</small>
+                            </li>
+                        }
+                    </ul>
+                }
+            </div>
+        </div>
+    </section>
+
+    <section class="card shadow-sm mt-4">
+        <div class="card-body">
             <div class="row align-items-end g-3 mb-3">
                 <div class="col-md-7">
                     <label class="form-label" for="historySensor">Sensor telemetry history</label>
@@ -219,11 +270,15 @@
     private List<TelemetryAlert> alerts = [];
     private TelemetryAlert? selectedAlert;
     private TelemetryHistory? selectedHistory;
+    private List<SensorAttachment> attachments = [];
+    private IBrowserFile? selectedAttachmentFile;
     private string selectedDeviceId = string.Empty;
     private string selectedMetric = string.Empty;
     private string? selectedPacketDetails;
     private string? message;
     private string messageStyle = "alert-info";
+    private string? attachmentMessage;
+    private string attachmentMessageStyle = "alert-info";
 
     protected override async Task OnInitializedAsync()
     {
@@ -290,6 +345,7 @@
             selectedHistory = await SensorApi.GetTelemetryHistoryAsync(selectedDeviceId);
             selectedMetric = string.Empty;
             selectedPacketDetails = null;
+            await LoadAttachmentsAsync();
         }
         catch (HttpRequestException)
         {
@@ -351,5 +407,73 @@
     private static string FormatTimestamp(DateTime timestampUtc)
     {
         return timestampUtc.ToLocalTime().ToString("dd MMM yyyy, HH:mm");
+    }
+
+    private void SelectAttachment(InputFileChangeEventArgs eventArgs)
+    {
+        selectedAttachmentFile = eventArgs.File;
+        attachmentMessage = $"{selectedAttachmentFile.Name} is ready to upload.";
+        attachmentMessageStyle = "alert-info";
+    }
+
+    private async Task UploadAttachmentAsync()
+    {
+        if (selectedAttachmentFile is null || string.IsNullOrWhiteSpace(selectedDeviceId))
+        {
+            return;
+        }
+
+        try
+        {
+            await using var fileStream = selectedAttachmentFile.OpenReadStream(10 * 1024 * 1024);
+            var response = await SensorApi.UploadAttachmentAsync(
+                selectedDeviceId,
+                selectedAttachmentFile.Name,
+                selectedAttachmentFile.ContentType,
+                fileStream);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                attachmentMessage = "The attachment could not be uploaded. Confirm the file is 10 MB or smaller.";
+                attachmentMessageStyle = "alert-danger";
+                return;
+            }
+
+            attachmentMessage = $"{selectedAttachmentFile.Name} was attached successfully.";
+            attachmentMessageStyle = "alert-success";
+            selectedAttachmentFile = null;
+            await LoadAttachmentsAsync();
+        }
+        catch (HttpRequestException)
+        {
+            attachmentMessage = "The API is not running. Start SmartX.Api, then try again.";
+            attachmentMessageStyle = "alert-warning";
+        }
+    }
+
+    private async Task LoadAttachmentsAsync()
+    {
+        if (string.IsNullOrWhiteSpace(selectedDeviceId))
+        {
+            attachments = [];
+            return;
+        }
+
+        try
+        {
+            attachments = await SensorApi.GetAttachmentsAsync(selectedDeviceId);
+        }
+        catch (HttpRequestException)
+        {
+            attachmentMessage = "The API is not running. Start SmartX.Api, then try again.";
+            attachmentMessageStyle = "alert-warning";
+        }
+    }
+
+    private static string FormatFileSize(long sizeBytes)
+    {
+        return sizeBytes < 1024 * 1024
+            ? $"{sizeBytes / 1024d:F1} KB"
+            : $"{sizeBytes / 1024d / 1024d:F1} MB";
     }
 }
