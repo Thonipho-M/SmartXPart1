@@ -30,6 +30,15 @@ main {
     padding: 1rem 1.25rem;
 }
 
+.alert-investigation {
+    background-color: #f7f0e2;
+    border: 1px solid #cbb894;
+    border-left: 5px solid #765237;
+    border-radius: 0.4rem;
+    color: #3c4436;
+    padding: 1rem 1.25rem;
+}
+
     .top-row ::deep a, .top-row ::deep .btn-link {
         white-space: nowrap;
         margin-left: 1.5rem;

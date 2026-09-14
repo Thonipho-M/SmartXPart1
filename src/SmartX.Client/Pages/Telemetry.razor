@@ -30,11 +30,27 @@
                         <div>
                             <strong>@alert.DeviceId - @alert.MetricName</strong>
                             <div>@alert.Message</div>
-                            <small>Suggested action: @alert.SuggestedAction</small>
                         </div>
                         <button class="btn btn-sm btn-outline-dark ms-3" @onclick="() => InvestigateAlertAsync(alert)">Investigate</button>
                     </div>
                 }
+            }
+
+            @if (selectedAlert is not null)
+            {
+                <section class="alert-investigation mt-3" aria-label="Alert investigation details">
+                    <div class="d-flex justify-content-between align-items-start gap-3">
+                        <div>
+                            <p class="text-uppercase fw-semibold mb-1">Investigation details</p>
+                            <h3 class="h5">@selectedAlert.DeviceId - @selectedAlert.MetricName</h3>
+                            <p><strong>Detected:</strong> @FormatTimestamp(selectedAlert.DetectedAtUtc)</p>
+                            <p><strong>Issue:</strong> @selectedAlert.Message</p>
+                            <p class="mb-0"><strong>Recommended action:</strong> @selectedAlert.SuggestedAction</p>
+                        </div>
+                        <button class="btn-close" aria-label="Close investigation" @onclick="CloseInvestigation"></button>
+                    </div>
+                    <p class="mb-0 mt-3 text-secondary">The sensor history below has been updated for this device. Use the metric filter to compare its readings.</p>
+                </section>
             }
         </div>
     </section>
@@ -201,6 +217,7 @@
     private SensorProfile newSensor = new();
     private List<SensorProfile> registeredSensors = [];
     private List<TelemetryAlert> alerts = [];
+    private TelemetryAlert? selectedAlert;
     private TelemetryHistory? selectedHistory;
     private string selectedDeviceId = string.Empty;
     private string selectedMetric = string.Empty;
@@ -296,8 +313,14 @@
 
     private async Task InvestigateAlertAsync(TelemetryAlert alert)
     {
+        selectedAlert = alert;
         selectedDeviceId = alert.DeviceId;
         await LoadSelectedTelemetryAsync();
+    }
+
+    private void CloseInvestigation()
+    {
+        selectedAlert = null;
     }
 
     private static string GetAlertStyle(AlertSeverity severity)
