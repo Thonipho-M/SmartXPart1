@@ -191,6 +191,37 @@ telemetry.MapPost("/boolean", (TelemetryPacket<bool> packet) =>
     StoreTelemetryPacket(packet, booleanTelemetry))
     .WithName("AddBooleanTelemetry");
 
+// Uses overloaded operators to compare the two latest smart-meter readings.
+telemetry.MapGet("/power-summary/{deviceId}", (string deviceId) =>
+{
+    var recentPackets = integerTelemetry
+        .Where(packet => packet.DeviceId.Equals(deviceId, StringComparison.OrdinalIgnoreCase) &&
+                         packet.MetricName == "Power Usage Watts")
+        .OrderByDescending(packet => packet.RecordedAtUtc)
+        .Take(2)
+        .ToList();
+
+    if (recentPackets.Count < 2)
+    {
+        return Results.NotFound(new { message = "At least two power readings are required for a calculation." });
+    }
+
+    var latestReading = new PowerReading(recentPackets[0].Value);
+    var previousReading = new PowerReading(recentPackets[1].Value);
+    var combinedLoad = latestReading + previousReading;
+    var powerDelta = latestReading - previousReading;
+
+    return Results.Ok(new
+    {
+        deviceId,
+        latestWatts = latestReading.Watts,
+        previousWatts = previousReading.Watts,
+        combinedWatts = combinedLoad.Watts,
+        deltaWatts = powerDelta.Watts
+    });
+})
+.WithName("GetPowerSummary");
+
 // GET /api/telemetry returns all packets, grouped by their value type.
 telemetry.MapGet("/", () => Results.Ok(new TelemetryHistory
 {

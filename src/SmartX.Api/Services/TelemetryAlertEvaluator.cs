@@ -27,8 +27,10 @@ public static class TelemetryAlertEvaluator
             });
         }
 
+        var powerSpikeThreshold = new PowerReading(1000);
         foreach (var packet in integerPackets.Where(packet =>
-                     packet.MetricName == "Power Usage Watts" && packet.Value > 1000))
+                     packet.MetricName == "Power Usage Watts" &&
+                     new PowerReading(packet.Value) > powerSpikeThreshold))
         {
             alerts.Add(new TelemetryAlert
             {
