@@ -21,6 +21,15 @@ main {
     align-items: center;
 }
 
+.help-panel {
+    background-color: #fffaf0;
+    border: 1px solid #cbb894;
+    border-left: 5px solid #526f3c;
+    border-radius: 0.4rem;
+    color: #3c4436;
+    padding: 1rem 1.25rem;
+}
+
     .top-row ::deep a, .top-row ::deep .btn-link {
         white-space: nowrap;
         margin-left: 1.5rem;
