@@ -169,6 +169,15 @@ MockTelemetrySeeder.Seed(
 var telemetry = app.MapGroup("/api/telemetry")
     .WithTags("Telemetry");
 
+// Validates a hierarchy such as Site > Greenhouse > Growing Bay using recursion.
+app.MapPost("/api/deployments/validate", (DeploymentConfiguration configuration) =>
+{
+    var validationResult = DeploymentConfigurationValidator.Validate(configuration, registeredSensors);
+    return Results.Ok(validationResult);
+})
+.WithTags("Deployments")
+.WithName("ValidateDeploymentConfiguration");
+
 app.MapGet("/api/alerts", () => Results.Ok(TelemetryAlertEvaluator.Evaluate(
     registeredSensors,
     floatTelemetry,
