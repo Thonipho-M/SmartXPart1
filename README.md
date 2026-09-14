@@ -39,29 +39,67 @@ src/
   SmartX.Shared/    Shared models used by the API and dashboard
 ```
 
-## Running the project
+## Setup and running the project
 
-Open two PowerShell windows in the project folder.
+### Prerequisites
 
-Start the API first:
+Install the **.NET 10 SDK** before running the project. Confirm it is available by opening PowerShell and running:
+
+```powershell
+dotnet --version
+```
+
+The command should display a version starting with `10`.
+
+### 1. Open the project folder
+
+In PowerShell, move into the folder that contains `SmartX.slnx`:
+
+```powershell
+cd "C:\path\to\SmartXPart1"
+```
+
+### 2. Restore dependencies
+
+Restore the NuGet packages for the complete solution. This is needed after cloning the repository or when dependencies change:
+
+```powershell
+dotnet restore SmartX.slnx
+```
+
+### 3. Compile the solution
+
+Build both the API and the Blazor WebAssembly client:
+
+```powershell
+dotnet build SmartX.slnx
+```
+
+The build is successful when PowerShell reports `Build succeeded` with zero errors.
+
+### 4. Start the backend API
+
+Keep the first PowerShell window open and run:
 
 ```powershell
 dotnet run --project src\SmartX.Api --launch-profile http
 ```
 
-Then start the dashboard:
+The API starts at `http://localhost:5145`. Leave this window running while using the dashboard.
+
+### 5. Start the client dashboard
+
+Open a **second** PowerShell window, move to the same project folder, and run:
 
 ```powershell
 dotnet run --project src\SmartX.Client --launch-profile http
 ```
 
-Open [http://localhost:5025/telemetry](http://localhost:5025/telemetry) in a browser.
+The browser should open automatically. If it does not, open [http://localhost:5025/telemetry](http://localhost:5025/telemetry) manually.
 
-To compile the complete solution:
+### 6. Stop the application
 
-```powershell
-dotnet build SmartX.slnx
-```
+In each PowerShell window, press `Ctrl` + `C` to stop the API or client. The Part 1 API uses temporary in-memory data, so newly registered sensors and uploaded attachments are cleared when the API stops.
 
 ## How to use the dashboard
 
