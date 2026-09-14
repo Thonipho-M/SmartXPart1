@@ -6,7 +6,7 @@ Smart-X is a simulated Internet of Things management system for distributed envi
 
 - **Developer:** Thonipho Mavhungu
 - **Student number:** ST10121100
-- **Module assessment:** Smart-X Part 1
+- **Module assessment:** PROG7312 Smart-X Part 1
 
 ## Implemented features
 
