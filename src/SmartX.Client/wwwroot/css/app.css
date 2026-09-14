@@ -1,5 +1,7 @@
 html, body {
     font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    background-color: #f4f0e6;
+    color: #2f3b2d;
 }
 
 h1:focus {
@@ -7,17 +9,51 @@ h1:focus {
 }
 
 a, .btn-link {
-    color: #0071c1;
+    color: #4f6d3a;
 }
 
 .btn-primary {
     color: #fff;
-    background-color: #1b6ec2;
-    border-color: #1861ac;
+    background-color: #526f3c;
+    border-color: #465f33;
 }
 
-.btn:focus, .btn:active:focus, .btn-link.nav-link:focus, .form-control:focus, .form-check-input:focus {
-  box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem #258cfb;
+.btn-primary:hover, .btn-primary:focus {
+    background-color: #405c2f;
+    border-color: #354d27;
+}
+
+.btn-outline-primary {
+    color: #526f3c;
+    border-color: #526f3c;
+}
+
+.btn-outline-primary:hover {
+    background-color: #526f3c;
+    border-color: #526f3c;
+}
+
+.text-primary {
+    color: #526f3c !important;
+}
+
+.card {
+    background-color: #fffdf8;
+    border-color: #d8cdbb;
+}
+
+.border-primary {
+    border-color: #7b5b3c !important;
+}
+
+.table {
+    --bs-table-bg: #fffdf8;
+    --bs-table-striped-bg: #f0eadc;
+}
+
+.btn:focus, .btn:active:focus, .btn-link.nav-link:focus, .form-control:focus, .form-select:focus, .form-check-input:focus {
+  box-shadow: 0 0 0 0.1rem #fffdf8, 0 0 0 0.25rem rgba(82, 111, 60, 0.35);
+  border-color: #7c9366;
 }
 
 .content {
@@ -85,7 +121,7 @@ a, .btn-link {
     }
 
         .loading-progress circle:last-child {
-            stroke: #1b6ec2;
+        stroke: #526f3c;
             stroke-dasharray: calc(3.141 * var(--blazor-load-percentage, 0%) * 0.8), 500%;
             transition: stroke-dasharray 0.05s ease-in-out;
         }
